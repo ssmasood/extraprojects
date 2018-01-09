@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>MyApp | The Coolest Food App</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.1/jquery.min.js"></script>
+<meta charset="utf-8">
+<style>
+body
+{
+    font-family: Arial;
+}
+#title
+{
+    font-size:24px;
+    width:100%;
+    text-align:center;
+    margin-top:20px;
+    margin-bottom:30px;
+}
+#map 
+{
+	width:70%;
+	height:400px;
+}
+#suggestion
+{
+	width:100%;
+	text-align:center;
+	margin-bottom:20px;
+}
+
+#new
+{
+	width:200px;
+	height:40px;
+	font-size: 20px;
+	background-color:#333;
+	color:#fff;
+	text-align:center;
+	padding:10px;
+	padding-top:25px;
+	margin-top:20px;
+	cursor:pointer;
+	font-weight:bold;
+}
+</style>
+</head>
+<body>
+	<div id="title">MyApp</div>
+
+	<div id="suggestion"></div> <!-- this is where we'll write in a suggestion -->
+	<center>
+		<div id="map"></div> <!-- this is the google map -->
+		<div id="new">Show me another</div> <!-- this is the button for generating a new suggestion -->
+	</center>
+</body>
+
+<script>
+// We need to make some of Google's map variables global so we can modify them later in AddMarker 
+// (this is different from Google's InfoWindow implementation)
+var map;
+var markers = [];
+var infowindow;
+
+// We need a way to get some random integers for later
+function getRandomInt(min, max) 
+{
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// We need to be able to add locations to the map
+function addMarker(location,content) // these are the function's parameters, location and content
+{
+	for (var i = 0; i < markers.length; i++) // Before we add a new marker, let's get rid of the other ones
+	{
+		markers[i].setMap(null); // This is Google's method of deleting a marker, you'd have found this after googling :-) you're smart :-)
+    }
+	marker = new google.maps.Marker({ // now we need to create a new marker using google's syntax
+		position: location, //let's give it a position of the location parameter
+		map: map, //the map we want to mess with is the "map" map (the map variable has the Google map)
+	});
+	markers.push(marker); // perfect! we created the marker, let's add it to our array of markers
+
+	contentString = "<h3>"+content+"</h3>"; // let's give the user some info to work with when they click the marker, this is the content parameter
+	
+	infowindow = new google.maps.InfoWindow({ // to show that info, we need an infowindow! let's create one using google's syntax
+		content: contentString // lets add that content from earlier to it!
+	});
+	marker.addListener('click', function() { //now lets add an event listener so when the user clicks on the marker, they get the info window
+		infowindow.open(map, marker); //this is how google does it in the infowindow example, so i tried to stick to that
+	});
+}
+
+// So we need somewhere to put our restaurants...
+var restaurants = [];
+
+// Now let's get some restaurants (trust me on the crossorigin.me thing, more info in the project pdf)
+$.getJSON('https://cors-anywhere.herokuapp.com/https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=33.640,-117.844&rankby=distance&types=food&key=AIzaSyALYuNn7DaTTN8IxpPprNtTl7USAUP3oc4', function(data) { 
+	// This is the CALLBACK FUNCTION assuming successful $.getJSON. I talk about callback functions in the PDF.
+	// Yes I hardcoded UCI in that URL, we can't use geolocation this week as I can't guarantee openlab access
+
+	// Loop through the data we got from the Google Places API
+	for(var i = 0; i<data.results.length;i++)
+	{
+		var temp = []; // create a temp array
+		temp.push(data.results[i].name); // push the restaurant name into that api
+		temp.push(data.results[i].geometry.location.lat); // now the latitude
+		temp.push(data.results[i].geometry.location.lng); // now the longitude
+		restaurants.push(temp); // now lets put that into that restaurants array we created earlier
+	}
+	console.log(restaurants); // good for debugging purposes
+	var randomNum = getRandomInt(0, restaurants.length-1) //lets generate a random number between 1 and the # of restaurants-1 (arrays count zero)
+	randomRestaurant = restaurants[randomNum]; //lets create a variable randomRestaurant and grab a random restaurant from our array
+	restaurantLocation = new google.maps.LatLng(randomRestaurant[1], randomRestaurant[2]); // create a new location using Google's LatLng function
+	console.log(randomRestaurant); // Useful for debugging
+	addMarker(restaurantLocation, randomRestaurant[0]); // Let's add it!
+	$("#suggestion").html("Hungry? Try <b>"+randomRestaurant[0]+"</b>"); // Don't forget to change the text on the page for the user!
+});
+
+// this is pretty much exactly the same function from google's "info window" section - we modified it though
+// we made the map, marker, infowindow variables global, so our other function could modify them
+// we also made the marker element into a markers array, so we can use google's marker modification functions
+// dont worry i didn't get it either, only figured it out when i google'd it 
+function initMap() {
+	var ucirvine = {lat: 33.640, lng: -117.844}; // lets give Google Maps the UCI location
+	map = new google.maps.Map(document.getElementById('map'), { 
+		zoom: 14, // i think zoom level 14 is pretty good (trial and error)
+		center: ucirvine // lets set the map center to uci
+	});
+}
+
+// what do we do when the user clicks the new button?
+$("#new").click(function(){
+	var randomNum = getRandomInt(0, restaurants.length-1) //lets generate a random number between 1 and the # of restaurants-1 (arrays count zero)
+	var newRestaurant = restaurants[randomNum]; //lets create a variable newRestaurant and grab a random restaurant from our array
+	restaurantLocation = new google.maps.LatLng(newRestaurant[1], newRestaurant[2]); // create a new location using Google's LatLng function
+	//console.log(newRestaurant); // Useful for debugging
+	addMarker(restaurantLocation, newRestaurant[0]); // Let's add it!
+	$("#suggestion").html("Hungry? Try <b>"+newRestaurant[0]+"</b>"); // Don't forget to change the text on the page for the user!
+});
+</script>
+<script async defer
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyALYuNn7DaTTN8IxpPprNtTl7USAUP3oc4&callback=initMap">
+</script>
+</html>
